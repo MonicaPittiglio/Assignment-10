@@ -1,0 +1,97 @@
+---
+title: "Assignment-10"
+author: "Monica Pittiglio"
+date: "8/6/2020"
+output: html_document
+---
+
+My report will analyze the differences in COVID-related death count between countries with universal healthcare and countries with non-universal healthcare.
+
+```{r setup, include = FALSE, echo = FALSE}
+# Just a load of all the packages I used or attempted to use for this project.
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(directlabels)
+library(tidyquant)
+```
+
+The data used in the following graph was from AllByPop, a data frame born of an inner_join and including country names, their populations, and their cumulative deaths, among a lot of other information. The graph was created by first mutating the country name coulumn so that it was ordered by deaths per capita. Then I called aesthetics - deaths per capita on the x-axis, and the mutated country name column on the y-axis, colored by healthcare type. The geom_point layer was added next along with the point size, bars from the y-axis to the points, figure title, and axis labels.
+
+```{r, echo = FALSE, include = FALSE}
+
+# Load of all coronavirus datasets, dataframes.
+Global <- read_csv("~/GitHub/COVID-19/raw_data/WHO-COVID-19-global-data (1).csv")
+
+AllCOVID <- Global %>%
+  filter(Country %in% c("Australia", "Bahrain", "Bhutan", "Botswana", "Brazil", "Brunei Darussalam", "Canada", "Cuba", "Denmark", "Finland", "Georgia", "Greece", "Iceland", "Ireland", "Italy", "Kuwait", "Malta", "New Zealand", "Norway", "Oman", "Portugal", "San Marino", "Saudi Arabia", "South Africa", "Spain", "Sri Lanka", "Sweden", "Trinidad and Tobago", "The United Kingdom", "Bangladesh", "Burundi", "Congo", "Ethiopia", "Jordan", "Kenya", "Nigeria", "Paraguay", "United Arab Emirates", "United Republic of Tanzania", "Uganda", "United States of America"))
+
+# Load data that includes population and healthcare type by country
+Population_and_Healthcare <- read_csv("~/GitHub/COVID-19/output/Population and Healthcare.csv")
+
+# Filter for all the countries we're looking at, both with universal and non-universal healthcare
+AllPopAndHealth <- Population_and_Healthcare %>%
+  filter(Country_name %in% c("Australia", "Bahrain", "Bhutan", "Botswana", "Brazil", "Brunei Darussalam", "Canada", "Cuba", "Denmark", "Finland", "Georgia", "Greece", "Iceland", "Ireland", "Italy", "Kuwait", "Malta", "New Zealand", "Norway", "Oman", "Portugal", "San Marino", "Saudi Arabia", "South Africa", "Spain", "Sri Lanka", "Sweden", "Trinidad and Tobago", "The United Kingdom", "Bangladesh", "Burundi", "Congo", "Ethiopia", "Jordan", "Kenya", "Nigeria", "Paraguay", "United Arab Emirates", "United Republic of Tanzania", "Uganda", "United States of America"))
+
+# Joined population and healthcare data, filtered for usable data.
+All <- inner_join(AllPopAndHealth, AllCOVID, by = c("Country_name" = "Country"))
+
+# Created per capita column
+AllByPop <- All %>%
+  filter(Date_reported == "2020-08-02") %>%
+  filter(Country_name %in% c("Australia", "Bahrain", "Bhutan", "Botswana", "Brazil", "Brunei Darussalam", "Canada", "Cuba", "Denmark", "Finland", "Georgia", "Greece", "Iceland", "Ireland", "Italy", "Kuwait", "Malta", "New Zealand", "Norway", "Oman", "Portugal", "San Marino", "Saudi Arabia", "South Africa", "Spain", "Sri Lanka", "Sweden", "Trinidad and Tobago", "The United Kingdom", "Bangladesh", "Burundi", "Congo", "Ethiopia", "Jordan", "Kenya", "Nigeria", "Paraguay", "United Arab Emirates", "United Republic of Tanzania", "Uganda", "United States of America")) %>%
+  mutate(DeathsPerCapita = Cumulative_deaths / Year_2019) %>%
+  mutate(CasesPerCapita = Cumulative_cases / Year_2019)
+```
+
+```{r, fig.align = "center", fig.width = 14, fig.height = 6, echo = FALSE}
+# Point plot with lines of deaths per capita
+AllByPop%>%
+  mutate(PC = fct_reorder(Country_name, DeathsPerCapita)) %>%
+  ggplot( aes(x = DeathsPerCapita, y = PC, color = Healthcare)) +
+  geom_point(size = 4) +
+  geom_segment(aes(xend = 0, yend = Country_name), size = 2) +
+  ggtitle("Figure 4: Total Deaths Per Capita in Countries with Both Healthcare Types") +
+  labs(x = "Population", y = "Country")
+```
+
+The data used in the following graph was from a data frame called NonUniversalByPop that included country names and new deaths per capita, among a lot of other information, for the countries that do not have universal healthcare. The graph was done by first creating aesthetics - date on the x-axis, and daily deaths per capita on the y-axis. The aesthetics are actually encased in the geom_line layer instead of the ggplot layer, in case I decided to add another geom_line layer with daily cases per capita. Next comes the facet wrap by country name, the log 10 scale on the y-axis, figure title, axis labels, and finally, the deletion of the legend.
+
+```{r, fig.align = "center", fig.width = 10, fig.height = 7, echo = FALSE}
+
+UniversalByPop <- All %>%
+  filter(Country_name %in% c("Australia", "Bahrain", "Bhutan", "Botswana", "Brazil", "Brunei Darussalam", "Canada", "Cuba", "Denmark", "Finland", "Georgia", "Greece", "Iceland", "Ireland", "Italy", "Kuwait", "Malta", "New Zealand", "Norway", "Oman", "Portugal", "San Marino", "Saudi Arabia", "South Africa", "Spain", "Sri Lanka", "Sweden", "Trinidad and Tobago", "The United Kingdom")) %>%
+  mutate(DeathsPerCapita = Cumulative_deaths / Year_2019) %>%
+  mutate(CasesPerCapita = Cumulative_cases / Year_2019) %>%
+  mutate(NewDeathsPerCapita = New_deaths / Year_2019) %>%
+  mutate(NewCasesPerCapita = New_cases / Year_2019)
+
+NonUniversalByPop <- All %>%
+  filter(Country_name %in% c("Bangladesh", "Burundi", "Congo", "Ethiopia", "Jordan", "Kenya", "Nigeria", "Paraguay", "United Arab Emirates", "United Republic of Tanzania", "Uganda", "United States of America")) %>%
+  mutate(DeathsPerCapita = Cumulative_deaths / Year_2019) %>%
+  mutate(CasesPerCapita = Cumulative_cases / Year_2019) %>%
+  mutate(NewDeathsPerCapita = New_deaths / Year_2019) %>%
+  mutate(NewCasesPerCapita = New_cases / Year_2019)
+
+# Individual graphs for every country with non-universal healthcare, of both cases and deaths per capita.
+ggplot() +
+  geom_line(data = NonUniversalByPop, aes(x = Date_reported, y = NewDeathsPerCapita, color = "Deaths")) +
+  facet_wrap(~ Country_name) +
+  ggtitle("Figure 5: Daily Deaths Per Capita, in Countries with Non-Universal Healthcare") +
+  labs(x = "Month", y = "Daily Deaths Per Capita") +
+  scale_y_log10() +
+  theme(legend.position = "none")
+```
+
+The code for the following graph is the same as above, but the data frame used was called UniversalByPop, and is a set of country names and new deaths per capita, among other information, for countries with universal healthcare.
+
+```{r, fig.align = "center", fig.width = 10, fig.height = 7, echo = FALSE}
+# Individual graphs for every country with universal healthcare, of both cases and deaths per capita.
+ggplot() +
+  geom_line(data = UniversalByPop, aes(x = Date_reported, y = NewDeathsPerCapita, color = "Deaths")) +
+  facet_wrap(~ Country_name) +
+  ggtitle("Figure 6: Daily Deaths Per Capita, in Countries with Universal Healthcare") +
+  labs(x = "Month", y = "Daily Deaths Per Capita") +
+  scale_y_log10() +
+  theme(legend.position = "none")
+```
